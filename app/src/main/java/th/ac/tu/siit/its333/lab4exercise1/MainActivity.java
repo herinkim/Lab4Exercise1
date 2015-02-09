@@ -22,13 +22,64 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        helper = new CourseDBHelper(this);
+
+        recal();
+
+    }
+
+    public void recal()
+    {
+
+
+        SQLiteDatabase db = helper.getReadableDatabase();
+
+        // cr is column 0, gp is column 2
+        //Cursor cursor = db.rawQuery("SELECT * FROM course;", null);
+
+        Cursor cursor = db.rawQuery("SELECT SUM(credit) cr, SUM(value*credit) gp FROM course;", null);
+
+            cursor.moveToFirst();
+            int totalCredit = cursor.getInt(0);
+
+
+
+                TextView tvGP = (TextView) findViewById(R.id.tvGP);
+                tvGP.setText("0.0");
+
+                TextView tvCredits = (TextView) findViewById(R.id.tvCR);
+                tvCredits.setText("0");
+
+                TextView tvGPA = (TextView) findViewById(R.id.tvGPA);
+                tvGPA.setText("0.0");
+
+            if(totalCredit > 0)
+            {
+                double totalGP = cursor.getDouble(1);
+                double totalGPA = totalGP/totalCredit;
+
+                System.out.println("get credit: " + totalCredit);
+
+                tvGP.setText(Double.toString(totalGP));
+
+                tvCredits.setText(Integer.toString(totalCredit));
+
+                tvGPA.setText((String.format("%.2f",totalGPA)));
+            }
+
+
+
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
         // This method is called when this activity is put foreground.
+
+        System.out.println("ON RESUME");
+
+        recal();
 
     }
 
@@ -48,9 +99,20 @@ public class MainActivity extends ActionBarActivity {
                 break;
 
             case R.id.btReset:
-
+                deleteRecord();
                 break;
         }
+    }
+
+    public void deleteRecord()
+    {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        int n_rows = db.delete("course", null, null);
+
+        recal();
+
+        TextView tvGPA = (TextView) findViewById(R.id.tvGPA);
+        tvGPA.setText("0.0");
     }
 
     @Override
@@ -61,6 +123,21 @@ public class MainActivity extends ActionBarActivity {
                 int credit = data.getIntExtra("credit", 0);
                 String grade = data.getStringExtra("grade");
 
+                // Coonect to database, table 'course'
+                helper = new CourseDBHelper(this);
+                SQLiteDatabase db = helper.getWritableDatabase();
+
+                // Create the content to insert
+                ContentValues content = new ContentValues();
+                content.put("code", code);
+                content.put("credit", credit);
+                content.put("grade", grade);
+                content.put("value", gradeToValue(grade));
+                long new_id = db.insert("course", null, content);
+
+                System.out.println("new id:" + new_id);
+
+                //recal();
             }
         }
 
@@ -108,3 +185,6 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 }
+
+//SELECT SUM(credit) cr,
+// SUM(value*credit) gp FROM course;
